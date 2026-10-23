@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { getKnowledgeItem, getKnowledgeItems, patchKnowledge, postKnowledge } from '../controllers/knowledgeController.js';
+import { requireAuth, requirePermission } from '../middleware/auth.js';
+import { requirePasswordChangeComplete } from '../middleware/passwordChange.js';
+const router = Router(); router.use(requireAuth, requirePasswordChangeComplete);
+router.get('/', requirePermission('knowledge.view'), getKnowledgeItems);
+router.post('/', requirePermission('knowledge.create'), postKnowledge);
+router.get('/:id', requirePermission('knowledge.view'), getKnowledgeItem);
+router.patch('/:id', requirePermission('knowledge.update'), patchKnowledge);
+export default router;

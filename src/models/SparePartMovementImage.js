@@ -1,0 +1,3 @@
+import mongoose from 'mongoose';
+const schema = new mongoose.Schema({ movement: { type: mongoose.Schema.Types.ObjectId, ref: 'SparePartMovement', required: true, index: true }, originalName: { type: String, required: true, maxlength: 255 }, storageName: { type: String, required: true, unique: true }, mimeType: { type: String, enum: ['image/jpeg', 'image/png'], required: true }, size: { type: Number, required: true }, uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true } }, { timestamps: { createdAt: true, updatedAt: false } });
+export default mongoose.model('SparePartMovementImage', schema);

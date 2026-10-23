@@ -1,0 +1,31 @@
+import { Router } from 'express';
+import { downloadTicketAttachment, getLiveTicketBoardData, getTicketAssignees, getTicketAttachments, getTicketById, getTicketComments, getTicketHistory, getTicketMentionableUsers, getTickets, getTicketNotificationCount, getTicketSlaPolicies, getTicketTroubleshooting, patchTicket, patchTicketAskedForHelp, patchTicketAssignment, patchTicketStatus, postTicket, postTicketAttachment, postTicketComment, postTicketTroubleshooting } from '../controllers/ticketController.js';
+import { requireAnyPermission, requireAuth, requirePermission } from '../middleware/auth.js';
+import { requirePasswordChangeComplete } from '../middleware/passwordChange.js';
+import { uploadTicketAttachment } from '../middleware/ticketUpload.js';
+
+const router = Router();
+router.get('/public-live-board', getLiveTicketBoardData);
+router.use(requireAuth, requirePasswordChangeComplete);
+router.get('/assignable-users', requirePermission('tickets.assign'), getTicketAssignees);
+router.get('/mentionable-users', requirePermission('tickets.update'), getTicketMentionableUsers);
+router.get('/sla-policies', requirePermission('tickets.create'), getTicketSlaPolicies);
+router.get('/notification-count', requireAnyPermission(['tickets.view', 'tickets.view.assigned']), getTicketNotificationCount);
+router.get('/live-board', requireAnyPermission(['tickets.view', 'tickets.view.assigned']), getLiveTicketBoardData);
+router.get('/', requireAnyPermission(['tickets.view', 'tickets.view.assigned']), getTickets);
+router.post('/', requirePermission('tickets.create'), requirePermission('employees.view'), postTicket);
+router.get('/:id', requireAnyPermission(['tickets.view', 'tickets.view.assigned']), getTicketById);
+router.patch('/:id/assign', requirePermission('tickets.assign'), patchTicketAssignment);
+router.patch('/:id/ask-for-help', requirePermission('tickets.update'), patchTicketAskedForHelp);
+router.patch('/:id/status', patchTicketStatus);
+router.patch('/:id', requirePermission('tickets.update'), patchTicket);
+router.get('/:id/comments', requireAnyPermission(['tickets.view', 'tickets.view.assigned']), getTicketComments);
+router.post('/:id/comments', requirePermission('tickets.update'), postTicketComment);
+router.get('/:id/history', requireAnyPermission(['tickets.view', 'tickets.view.assigned']), getTicketHistory);
+router.get('/:id/troubleshooting', requireAnyPermission(['tickets.view', 'tickets.view.assigned']), getTicketTroubleshooting);
+router.post('/:id/troubleshooting', requirePermission('tickets.update'), postTicketTroubleshooting);
+router.get('/:id/attachments', requireAnyPermission(['tickets.view', 'tickets.view.assigned']), getTicketAttachments);
+router.post('/:id/attachments', requirePermission('tickets.update'), uploadTicketAttachment, postTicketAttachment);
+router.get('/:id/attachments/:attachmentId/download', requireAnyPermission(['tickets.view', 'tickets.view.assigned']), downloadTicketAttachment);
+
+export default router;

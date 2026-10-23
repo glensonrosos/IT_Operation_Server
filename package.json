@@ -1,0 +1,32 @@
+{
+  "name": "@itms/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "seed": "node src/scripts/seed.js",
+    "test": "node --import ./test/setup.js --test ./test/auth.test.js",
+    "check": "node --check src/server.js && node --check src/app.js"
+  },
+  "dependencies": {
+    "bcrypt": "6.0.0",
+    "cookie-parser": "1.4.7",
+    "cors": "2.8.5",
+    "dotenv": "16.4.7",
+    "express": "4.21.2",
+    "express-rate-limit": "7.5.0",
+    "helmet": "8.0.0",
+    "jsonwebtoken": "9.0.3",
+    "mongoose": "8.9.5",
+    "multer": "2.0.2",
+    "pino": "9.6.0",
+    "pino-http": "10.4.0",
+    "zod": "3.24.2"
+  },
+  "devDependencies": {
+    "pino-pretty": "13.0.0",
+    "supertest": "7.3.0"
+  }
+}

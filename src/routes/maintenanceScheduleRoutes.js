@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { requireAuth, requirePermission } from '../middleware/auth.js';
+import { requirePasswordChangeComplete } from '../middleware/passwordChange.js';
+import { getSchedules, patchSchedule, postSchedule } from '../controllers/maintenanceScheduleController.js';
+const router = Router();
+router.use(requireAuth, requirePasswordChangeComplete, requirePermission('maintenance.view'));
+router.get('/', getSchedules);
+router.post('/', requirePermission('maintenance.create'), postSchedule);
+router.patch('/:id', requirePermission('maintenance.update'), patchSchedule);
+export default router;

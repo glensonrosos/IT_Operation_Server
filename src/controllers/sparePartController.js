@@ -1,0 +1,14 @@
+import { AppError } from '../middleware/errorHandler.js';
+import { createSparePart, getSparePart, listSparePartMovements, listSpareParts, moveSparePart, updateSparePart, storeSparePartMovementImages, listSparePartMovementImages, streamSparePartMovementImage } from '../services/sparePartService.js';
+import { createSparePartSchema, sparePartMovementSchema, sparePartQuerySchema, updateSparePartSchema } from '../validators/sparePartValidators.js';
+function parse(schema, value, next) { const result = schema.safeParse(value); if (!result.success) { next(new AppError(422, 'VALIDATION_FAILED', 'Validation failed', result.error.issues)); return null; } return result.data; }
+export async function getSpareParts(req, res, next) { const filters = parse(sparePartQuerySchema, req.query, next); if (!filters) return; try { res.json({ success: true, data: await listSpareParts(filters) }); } catch (error) { next(error); } }
+export async function getSparePartById(req, res, next) { try { res.json({ success: true, data: { sparePart: await getSparePart(req.params.id) } }); } catch (error) { next(error); } }
+export async function postSparePart(req, res, next) { const input = parse(createSparePartSchema, req.body, next); if (!input) return; try { res.status(201).json({ success: true, message: 'Spare part created', data: { sparePart: await createSparePart(input, req.user._id) } }); } catch (error) { next(error); } }
+export async function patchSparePart(req, res, next) { const input = parse(updateSparePartSchema, req.body, next); if (!input) return; try { res.json({ success: true, message: 'Spare part updated', data: { sparePart: await updateSparePart(req.params.id, input, req.user._id) } }); } catch (error) { next(error); } }
+export async function postSparePartMovement(req, res, next) { const input = parse(sparePartMovementSchema, req.body, next); if (!input) return; try { res.status(201).json({ success: true, message: 'Spare-part movement recorded', data: await moveSparePart(req.params.id, input, req.user._id) }); } catch (error) { next(error); } }
+export async function getSparePartHistory(req, res, next) { try { res.json({ success: true, data: { items: await listSparePartMovements(req.params.id) } }); } catch (error) { next(error); } }
+
+export async function postSparePartMovementImages(req, res, next) { try { res.status(201).json({ success: true, data: { images: await storeSparePartMovementImages(req.params.movementId, req.files, req.user._id) } }); } catch (error) { next(error); } }
+export async function getSparePartMovementImages(req, res, next) { try { res.json({ success: true, data: { images: await listSparePartMovementImages(req.params.movementId) } }); } catch (error) { next(error); } }
+export async function getSparePartMovementImage(req, res, next) { try { await streamSparePartMovementImage(req.params.movementId, req.params.imageId, res, next); } catch (error) { next(error); } }

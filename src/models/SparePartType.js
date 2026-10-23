@@ -1,0 +1,3 @@
+import mongoose from 'mongoose';
+const sparePartTypeSchema = new mongoose.Schema({ code: { type: String, required: true, unique: true, uppercase: true, trim: true }, name: { type: String, required: true, trim: true, maxlength: 100 }, description: { type: String, trim: true, maxlength: 1000, default: '' }, isActive: { type: Boolean, default: true, index: true }, createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true } }, { timestamps: true });
+export default mongoose.model('SparePartType', sparePartTypeSchema);
