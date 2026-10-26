@@ -46,7 +46,7 @@ export const permissionDefinitions = [
   ['spareParts.view', 'View spare parts'],
   ['spareParts.manage', 'Manage spare parts'],
   ['spareParts.stock', 'Record spare-part stock movements'],
-  ['reports.view', 'View reports']
+  ['reports.view', 'View reports'],
   ['reports.view.relevant', 'View relevant reports'],
   ['reports.export', 'Export reports'],
   ['knowledge.view', 'View knowledge base'],

@@ -3,9 +3,9 @@ export const ticketPriorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 export const ticketStatuses = ['OPEN', 'IN_PROGRESS', 'PENDING', 'CLOSED', 'CANCELLED', 'DUPLICATED'];
 
 export const defaultTicketCategories = [
-  'Hardware', 'Software', 'Network', 'Internet', 'Printer', 'Email', 'User Account', 'Access',
-  'Security', 'Server', 'Application', 'Database', 'Telephone/PABX', 'CCTV', 'Backup',
-  'IT Asset', 'Tool/Equipment', 'Other'
+  'Hardware', 'Software', 'Network & Internet', 'User Accounts & Access', 'Email & Collaboration',
+   'Printing & Scanning', 'Security', 'Servers & Infrastructure', 
+   'IT Assets & Equipment', 'Other / General Support',
 ].map((name) => ({ name, nameKey: name.toLocaleLowerCase('en'), description: '', isActive: true, isArchived: false }));
 
 export const defaultSlaPolicies = [

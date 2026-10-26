@@ -15,6 +15,22 @@ function findEmployeeQuery(identifier) {
   return mongoose.isValidObjectId(identifier) ? { _id: identifier } : { employeeId: identifier.toUpperCase() };
 }
 
+function employeeFullName(input) {
+  return [input.firstName, input.middleName, input.lastName]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function ensureUniqueEmployeeName(input, excludeId = null) {
+  const query = { fullName: new RegExp(`^${employeeFullName(input).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') };
+  if (excludeId) query._id = { $ne: excludeId };
+  if (await Employee.exists(query)) {
+    throw new AppError(409, 'DUPLICATE_EMPLOYEE_NAME', 'An employee with this name already exists');
+  }
+}
+
 export async function listEmployees({ page, limit, search, department, status, includeArchived, sortBy, sortOrder }) {
   const filter = { isArchived: includeArchived ? { $in: [true, false] } : false };
   if (department) filter.department = department;
@@ -50,6 +66,7 @@ async function validateDepartment(departmentId, status) {
 
 export async function createEmployee(input, actorId) {
   const department = await validateDepartment(input.department, input.status);
+  await ensureUniqueEmployeeName(input);
   const counter = await Counter.findOneAndUpdate({ key: 'employee' }, { $inc: { sequence: 1 }, $setOnInsert: { key: 'employee' } }, { new: true, upsert: true });
   const employeeId = `EMP-${String(counter.sequence).padStart(6, '0')}`;
   const employee = await Employee.create({ ...input, employeeId, email: input.email || null, department });
@@ -60,6 +77,13 @@ export async function createEmployee(input, actorId) {
 export async function updateEmployee(identifier, updates, actorId) {
   const employee = await Employee.findOne({ ...findEmployeeQuery(identifier), isArchived: false });
   if (!employee) throw new AppError(404, 'EMPLOYEE_NOT_FOUND', 'Employee not found');
+  if (updates.firstName !== undefined || updates.lastName !== undefined) {
+    await ensureUniqueEmployeeName({
+      firstName: updates.firstName ?? employee.firstName,
+      middleName: employee.middleName,
+      lastName: updates.lastName ?? employee.lastName
+    }, employee._id);
+  }
   const departmentId = updates.department ?? employee.department;
   const status = updates.status ?? employee.status;
   const departmentChanged = updates.department !== undefined && !employee.department.equals(updates.department);
