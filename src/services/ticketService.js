@@ -230,7 +230,11 @@ export async function createTicket(input, actor) {
   if (!category) throw new AppError(422, 'INVALID_CATEGORY', 'Select an active ticket category');
   if (input.assetReferences.length) {
     const uniqueReferences = new Set(input.assetReferences);
-    const linkedAssets = await Asset.countDocuments({ _id: { $in: input.assetReferences }, $or: [{ currentCustodian: requester._id }, { currentBorrower: requester._id }], isArchived: false });
+    const isItDepartment = ['IT', 'IT Department'].includes(requester.department.departmentName);
+    const ownershipFilter = isItDepartment
+      ? { $or: [{ currentCustodian: requester._id }, { currentBorrower: requester._id }, { status: 'AVAILABLE', currentCustodian: null, currentBorrower: null }] }
+      : { $or: [{ currentCustodian: requester._id }, { currentBorrower: requester._id }] };
+    const linkedAssets = await Asset.countDocuments({ _id: { $in: input.assetReferences }, ...ownershipFilter, isArchived: false });
     if (linkedAssets !== uniqueReferences.size || linkedAssets !== input.assetReferences.length) {
       throw new AppError(422, 'INVALID_ASSET_REFERENCE', 'Linked assets must be unique and currently assigned to the requester');
     }

@@ -49,9 +49,6 @@ export async function createMaintenance(input, actorId) {
   if (asset.currentMaintenance || asset.pendingTransfer || asset.pendingReturn || asset.currentBorrowing) {
     throw new AppError(409, 'ASSET_LIFECYCLE_IN_PROGRESS', 'Asset already has an active lifecycle operation');
   }
-  if (['CORRECTIVE', 'REPAIR'].includes(input.type) && (asset.currentCustodian || asset.currentBorrower || asset.currentBorrowing)) {
-    throw new AppError(409, 'ASSET_ASSIGNED', 'Return the asset before opening corrective maintenance or repair');
-  }
   if (['LOST', 'DISPOSED', 'RETIRED'].includes(asset.status)) throw new AppError(409, 'ASSET_NOT_MAINTAINABLE', 'Lost, disposed, or retired assets cannot receive maintenance');
   if (['CORRECTIVE', 'REPAIR'].includes(input.type) && !canTransitionAsset(asset.status, 'UNDER_REPAIR')) {
     throw new AppError(409, 'INVALID_ASSET_TRANSITION', `Asset cannot move from ${asset.status} to UNDER_REPAIR`);
@@ -166,12 +163,15 @@ async function finalizeMaintenance(record, actorId) {
     return getMaintenance(record.id);
   }
   if (!asset.currentMaintenance?.equals(record._id)) throw new AppError(409, 'ASSET_MAINTENANCE_LOCK_MISSING', 'Asset no longer points to this maintenance record');
-  const nextStatus = 'AVAILABLE';
-  if (!canTransitionAsset('UNDER_REPAIR', nextStatus)) throw new AppError(409, 'INVALID_ASSET_TRANSITION', 'Asset cannot move from UNDER_REPAIR to AVAILABLE');
+  const nextStatus = ['DAMAGED', 'UNUSABLE'].includes(record.completionCondition)
+    ? 'DAMAGED'
+    : asset.currentCustodian
+      ? 'ASSIGNED'
+      : asset.currentBorrower
+        ? 'BORROWED'
+        : 'AVAILABLE';
+  if (!canTransitionAsset('UNDER_REPAIR', nextStatus)) throw new AppError(409, 'INVALID_ASSET_TRANSITION', `Asset cannot move from UNDER_REPAIR to ${nextStatus}`);
   if (asset.currentCustodian && ['DAMAGED', 'UNUSABLE'].includes(record.completionCondition)) throw new AppError(409, 'ASSET_ASSIGNED', 'Return the asset before recording a damaged condition');
-  if (['DAMAGED', 'UNUSABLE'].includes(record.completionCondition) && ['AVAILABLE', 'IN_STOCK'].includes(nextStatus)) {
-    throw new AppError(422, 'CONDITION_STATUS_MISMATCH', 'A damaged asset cannot be returned to available stock');
-  }
   const updatedAsset = await Asset.findOneAndUpdate(
     { _id: asset._id, currentMaintenance: record._id, currentBorrowing: null, pendingTransfer: null, pendingReturn: null },
     { $set: {

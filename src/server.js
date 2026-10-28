@@ -3,11 +3,14 @@ import app from './app.js';
 import { env } from './config/env.js';
 import { logger } from './utils/logger.js';
 import { processDueSchedules } from './services/maintenanceScheduleService.js';
+import Ticket from './models/Ticket.js';
 
 let server;
 
 async function start() {
   await mongoose.connect(env.MONGO_URI, { serverSelectionTimeoutMS: 5000 });
+  await Ticket.collection.dropIndex('routineMaintenanceSchedule_1_routineMaintenanceRunAt_1').catch(() => {});
+  await Ticket.syncIndexes();
   server = app.listen(env.PORT, () => logger.info({ port: env.PORT }, 'API server listening'));
   const scheduleTimer = setInterval(() => processDueSchedules().catch((error) => logger.error({ err: error }, 'Routine maintenance scheduler failed')), 60_000);
   server.on('close', () => clearInterval(scheduleTimer));

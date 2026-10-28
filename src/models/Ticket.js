@@ -53,6 +53,9 @@ const ticketSchema = new mongoose.Schema({
 ticketSchema.index({ status: 1, priority: 1, createdAt: -1 });
 ticketSchema.index({ assignedTo: 1, status: 1, createdAt: -1 });
 ticketSchema.index({ department: 1, createdAt: -1 });
-ticketSchema.index({ routineMaintenanceSchedule: 1, routineMaintenanceRunAt: 1 }, { unique: true, sparse: true });
+ticketSchema.index(
+  { routineMaintenanceSchedule: 1, routineMaintenanceRunAt: 1 },
+  { unique: true, partialFilterExpression: { routineMaintenanceSchedule: { $type: 'objectId' }, routineMaintenanceRunAt: { $type: 'date' } } }
+);
 
 export default mongoose.model('Ticket', ticketSchema);
