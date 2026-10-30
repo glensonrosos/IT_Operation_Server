@@ -20,6 +20,7 @@ const envSchema = z.object({
   INITIAL_ADMIN_LAST_NAME: z.string().optional(),
   INITIAL_ADMIN_PASSWORD: z.string().optional(),
   UPLOAD_DIR: z.string().min(1).default('uploads'),
+  COOKIE_SECURE: z.enum(['true', 'false']).optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info')
 });
 

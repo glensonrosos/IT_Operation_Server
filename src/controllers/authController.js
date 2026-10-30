@@ -9,7 +9,7 @@ import { changePasswordSchema } from '../validators/userValidators.js';
 
 const cookieOptions = {
   httpOnly: true,
-  secure: env.NODE_ENV === 'production',
+  secure: env.COOKIE_SECURE ? env.COOKIE_SECURE === 'true' : env.NODE_ENV === 'production',
   sameSite: 'strict',
   path: '/api'
 };
