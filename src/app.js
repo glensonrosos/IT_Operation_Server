@@ -47,7 +47,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 app.use(cookieParser());
 app.use('/api', csrfProtection);
-app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draft-7', legacyHeaders: false }));
+app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, limit: env.API_RATE_LIMIT, standardHeaders: 'draft-7', legacyHeaders: false }));
 app.use('/api', auditLogging);
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);

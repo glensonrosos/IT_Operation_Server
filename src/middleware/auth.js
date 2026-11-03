@@ -18,7 +18,7 @@ export async function requireAuth(req, res, next) {
     req.sessionId = authenticated.sessionId;
     res.cookie(env.JWT_COOKIE_NAME, token, {
       httpOnly: true,
-      secure: env.NODE_ENV === 'production',
+      secure: env.COOKIE_SECURE ? env.COOKIE_SECURE === 'true' : env.NODE_ENV === 'production',
       sameSite: 'strict',
       path: '/api',
       expires: authenticated.expiresAt
