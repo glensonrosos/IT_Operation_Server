@@ -37,10 +37,6 @@ export async function login({ username, password }, request) {
   if (!user || !passwordMatches) {
     if (user) {
       user.failedLoginAttempts += 1;
-      if (user.failedLoginAttempts >= env.LOGIN_MAX_ATTEMPTS) {
-        user.status = 'LOCKED';
-        user.lockedUntil = new Date(Date.now() + env.LOCKOUT_MINUTES * 60_000);
-      }
       await user.save();
     }
     logger.warn({ username: normalizedUsername, ip: request.ip }, 'Authentication failed');
