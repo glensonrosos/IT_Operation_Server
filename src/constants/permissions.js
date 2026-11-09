@@ -69,13 +69,20 @@ export const roleDefinitions = [
     name: 'IT Supervisor',
     description: 'Manages IT service and asset operations.',
     permissionKeys: [
-      'employees.view', 'departments.view', 'tickets.view', 'tickets.create', 'tickets.update',
-      'tickets.assign', 'tickets.resolve', 'tickets.reopen', 'tickets.close', 'assets.view',
-      'assets.create', 'assets.update', 'assets.assign', 'assets.transfer', 'assets.return',
-      'borrowing.view', 'borrowing.create', 'borrowing.approve', 'borrowing.checkout',
-      'borrowing.checkin', 'borrowing.update', 'borrowing.cancel', 'maintenance.view',
-      'maintenance.create', 'maintenance.update', 'reports.view', 'reports.export',
-      'knowledge.view', 'knowledge.create', 'knowledge.update', 'audit.view'
+      'employees.view', 'employees.create', 'employees.update', 'employees.archive',
+      'departments.view', 'departments.create', 'departments.update', 'departments.delete', 'departments.archive',
+      'tickets.view', 'tickets.view.assigned', 'tickets.create', 'tickets.update',
+      'tickets.assign', 'tickets.resolve', 'tickets.reopen', 'tickets.close',
+      'ticketCategories.manage', 'sla.manage',
+      'assets.view', 'assets.create', 'assets.update', 'assets.assign', 'assets.transfer',
+      'assets.return', 'assets.archive', 'assetTypes.manage',
+      'borrowing.view', 'borrowing.view.assigned', 'borrowing.create', 'borrowing.approve',
+      'borrowing.checkout', 'borrowing.checkin', 'borrowing.update', 'borrowing.cancel',
+      'maintenance.view', 'maintenance.create', 'maintenance.update',
+      'spareParts.view', 'spareParts.manage', 'spareParts.stock',
+      'reports.view', 'reports.view.relevant', 'reports.export',
+      'knowledge.view', 'knowledge.create', 'knowledge.update',
+      'audit.view', 'settings.view', 'settings.update'
     ]
   },
   {
@@ -83,11 +90,17 @@ export const roleDefinitions = [
     name: 'IT Staff / Technician',
     description: 'Handles assigned tickets and permitted IT operations.',
     permissionKeys: [
-      'employees.view', 'tickets.view', 'tickets.view.assigned', 'tickets.create',
-      'tickets.update', 'tickets.resolve', 'tickets.close', 'tickets.assign', 'assets.view', 'assets.update', 'assets.return', 'spareParts.view',
-      'borrowing.view.assigned', 'borrowing.create', 'borrowing.checkout', 'borrowing.checkin',
-      'maintenance.view', 'maintenance.create', 'reports.view.relevant',
-      'knowledge.view'
+      'employees.view', 'employees.create', 'employees.update', 'employees.archive',
+      'tickets.view', 'tickets.view.assigned', 'tickets.create', 'tickets.update',
+      'tickets.assign', 'tickets.resolve', 'tickets.reopen', 'tickets.close',
+      'assets.view', 'assets.create', 'assets.update', 'assets.assign',
+      'assets.transfer', 'assets.return', 'assets.archive',
+      'spareParts.view', 'spareParts.stock',
+      'borrowing.view', 'borrowing.view.assigned', 'borrowing.create', 'borrowing.approve',
+      'borrowing.checkout', 'borrowing.checkin', 'borrowing.update', 'borrowing.cancel',
+      'maintenance.view', 'maintenance.create', 'maintenance.update',
+      'reports.view', 'reports.view.relevant', 'reports.export',
+      'knowledge.view', 'knowledge.create', 'knowledge.update'
     ]
   }
 ];
