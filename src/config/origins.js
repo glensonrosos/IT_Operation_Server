@@ -5,15 +5,12 @@ const configuredOrigins = new Set([env.CLIENT_URL, ...env.DEV_PREVIEW_ORIGINS.sp
 export function isAllowedOrigin(origin) {
   if (!origin) return true;
   if (configuredOrigins.has(origin)) return true;
-  if (env.NODE_ENV === 'development') {
-    try {
-      const url = new URL(origin);
-      return (url.hostname === 'localhost' || url.hostname === '127.0.0.1') && Boolean(url.port);
-    } catch {
-      return false;
-    }
+  try {
+    const url = new URL(origin);
+    return (url.hostname === 'localhost' || url.hostname === '127.0.0.1') && Boolean(url.port);
+  } catch {
+    return false;
   }
-  return false;
 }
 
 export const allowedOrigins = [...configuredOrigins];

@@ -1,11 +1,17 @@
+import { randomUUID } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import mongoose from 'mongoose';
+import { env } from '../config/env.js';
 import { AppError } from '../middleware/errorHandler.js';
 import Department from '../models/Department.js';
 import Employee from '../models/Employee.js';
 import Counter from '../models/Counter.js';
 import { logger } from '../utils/logger.js';
 
-const employeeFields = 'employeeId firstName middleName lastName fullName department position email contactNumber location notes status isArchived archivedAt createdAt updatedAt';
+const employeeFields = 'employeeId firstName middleName lastName fullName department position email contactNumber location notes status isArchived archivedAt createdAt updatedAt photo';
+const employeePhotoRoot = path.resolve(env.UPLOAD_DIR, 'employee-photos');
 
 function safeExpression(value) {
   return new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
@@ -44,7 +50,7 @@ export async function listEmployees({ page, limit, search, department, status, i
     Employee.find(filter).select(employeeFields).populate('department', 'departmentCode departmentName').sort(sort).skip((page - 1) * limit).limit(limit).lean(),
     Employee.countDocuments(filter)
   ]);
-  return { items: items.map((item) => ({ ...item, id: item._id.toString() })), pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
+  return { items: items.map((item) => ({ ...item, id: item._id.toString(), hasPhoto: Boolean(item.photo?.storageName) })), pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
 }
 
 export async function getEmployee(identifier, includeArchived = false) {
@@ -53,7 +59,7 @@ export async function getEmployee(identifier, includeArchived = false) {
     .populate('department', 'departmentCode departmentName location')
     .lean();
   if (!employee) throw new AppError(404, 'EMPLOYEE_NOT_FOUND', 'Employee not found');
-  return { ...employee, id: employee._id.toString() };
+  return { ...employee, id: employee._id.toString(), hasPhoto: Boolean(employee.photo?.storageName) };
 }
 
 async function validateDepartment(departmentId, status) {
@@ -64,14 +70,29 @@ async function validateDepartment(departmentId, status) {
   return department._id;
 }
 
+async function resyncEmployeeCounter() {
+  const [agg] = await Employee.aggregate([
+    { $project: { numericId: { $convert: { input: { $substrCP: ['$employeeId', 4, 20] }, to: 'int', onError: 0 } } } },
+    { $group: { _id: null, max: { $max: '$numericId' } } }
+  ]);
+  await Counter.updateOne({ key: 'employee' }, { $set: { sequence: agg?.max ?? 0 } }, { upsert: true });
+}
+
 export async function createEmployee(input, actorId) {
   const department = await validateDepartment(input.department, input.status);
   await ensureUniqueEmployeeName(input);
-  const counter = await Counter.findOneAndUpdate({ key: 'employee' }, { $inc: { sequence: 1 }, $setOnInsert: { key: 'employee' } }, { new: true, upsert: true });
-  const employeeId = `EMP-${String(counter.sequence).padStart(6, '0')}`;
-  const employee = await Employee.create({ ...input, employeeId, email: input.email || null, department });
-  logger.info({ action: 'CREATE', module: 'employees', recordId: employee.id, userId: actorId }, 'Employee created');
-  return getEmployee(employee.id, true);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const counter = await Counter.findOneAndUpdate({ key: 'employee' }, { $inc: { sequence: 1 }, $setOnInsert: { key: 'employee' } }, { new: true, upsert: true });
+    const employeeId = `EMP-${String(counter.sequence).padStart(6, '0')}`;
+    try {
+      const employee = await Employee.create({ ...input, employeeId, email: input.email || null, department });
+      logger.info({ action: 'CREATE', module: 'employees', recordId: employee.id, userId: actorId }, 'Employee created');
+      return getEmployee(employee.id, true);
+    } catch (error) {
+      if (error?.code !== 11000 || attempt === 1) throw error;
+      await resyncEmployeeCounter();
+    }
+  }
 }
 
 export async function updateEmployee(identifier, updates, actorId) {
@@ -96,6 +117,45 @@ export async function updateEmployee(identifier, updates, actorId) {
   await employee.save();
   logger.info({ action: 'UPDATE', module: 'employees', recordId: employee.id, userId: actorId }, 'Employee updated');
   return getEmployee(employee.id, true);
+}
+
+export async function storeEmployeePhoto(identifier, file, actorId) {
+  if (!file || !Buffer.isBuffer(file.buffer) || file.size < 1) throw new AppError(400, 'FILE_REQUIRED', 'Select an image to upload');
+  const employee = await Employee.findOne(findEmployeeQuery(identifier));
+  if (!employee) throw new AppError(404, 'EMPLOYEE_NOT_FOUND', 'Employee not found');
+  await mkdir(employeePhotoRoot, { recursive: true });
+  const extension = file.mimetype === 'image/png' ? '.png' : '.jpg';
+  const storageName = `${randomUUID()}${extension}`;
+  await writeFile(path.join(employeePhotoRoot, storageName), file.buffer, { flag: 'wx', mode: 0o640 });
+  if (employee.photo?.storageName) await unlink(path.join(employeePhotoRoot, employee.photo.storageName)).catch(() => {});
+  employee.photo = {
+    storageName,
+    originalName: path.basename(file.originalname).slice(0, 255),
+    mimeType: file.mimetype,
+    size: file.size,
+    uploadedBy: actorId,
+    uploadedAt: new Date()
+  };
+  await employee.save();
+  logger.info({ action: 'PHOTO_UPLOAD', module: 'employees', recordId: employee.id, userId: actorId }, 'Employee photo uploaded');
+  return { originalName: employee.photo.originalName, mimeType: employee.photo.mimeType, size: employee.photo.size, uploadedAt: employee.photo.uploadedAt };
+}
+
+export async function streamEmployeePhoto(identifier, download, res, next) {
+  const employee = await Employee.findOne(findEmployeeQuery(identifier)).select('photo fullName').lean();
+  if (!employee?.photo?.storageName) throw new AppError(404, 'PHOTO_NOT_FOUND', 'Employee photo not found');
+  const { photo } = employee;
+  const filename = photo.originalName || `${employee.fullName ?? 'employee-photo'}${path.extname(photo.storageName)}`;
+  res.set({
+    'Content-Type': photo.mimeType,
+    'Content-Length': photo.size,
+    'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    'Cache-Control': 'private, no-store',
+    'X-Content-Type-Options': 'nosniff'
+  });
+  const stream = createReadStream(path.join(employeePhotoRoot, photo.storageName));
+  stream.on('error', next);
+  stream.pipe(res);
 }
 
 export async function archiveEmployee(identifier, actorId, restore = false) {

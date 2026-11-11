@@ -1,5 +1,5 @@
 import { AppError } from '../middleware/errorHandler.js';
-import { archiveEmployee, createEmployee, getEmployee, listEmployees, updateEmployee } from '../services/employeeService.js';
+import { archiveEmployee, createEmployee, getEmployee, listEmployees, storeEmployeePhoto, streamEmployeePhoto, updateEmployee } from '../services/employeeService.js';
 import { createEmployeeSchema, employeeQuerySchema, updateEmployeeSchema } from '../validators/employeeValidators.js';
 
 function parseOrFail(schema, value, next) {
@@ -44,6 +44,23 @@ export async function postEmployee(req, res, next) {
   try {
     const employee = await createEmployee(input, req.user._id);
     res.status(201).json({ success: true, message: 'Employee created', data: { employee } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function postEmployeePhoto(req, res, next) {
+  try {
+    const photo = await storeEmployeePhoto(req.params.id, req.file, req.user._id);
+    res.status(201).json({ success: true, message: 'Employee photo uploaded', data: { photo } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getEmployeePhoto(req, res, next) {
+  try {
+    await streamEmployeePhoto(req.params.id, ['1', 'true'].includes(String(req.query.download)), res, next);
   } catch (error) {
     next(error);
   }

@@ -15,7 +15,15 @@ const employeeSchema = new mongoose.Schema({
   status: { type: String, enum: ['ACTIVE', 'INACTIVE', 'ON_LEAVE', 'RESIGNED', 'TERMINATED', 'RETIRED'], default: 'ACTIVE', index: true },
   isArchived: { type: Boolean, default: false, index: true },
   archivedAt: { type: Date, default: null },
-  archivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }
+  archivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  photo: {
+    storageName: { type: String, default: null },
+    originalName: { type: String, trim: true, maxlength: 255, default: '' },
+    mimeType: { type: String, enum: ['image/jpeg', 'image/png', null], default: null },
+    size: { type: Number, default: 0 },
+    uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    uploadedAt: { type: Date, default: null }
+  }
 }, { timestamps: true });
 
 employeeSchema.pre('validate', function () {
