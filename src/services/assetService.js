@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import mongoose from 'mongoose';
@@ -369,6 +369,19 @@ export async function streamAssetImage(identifier, imageId, res, next) {
   const stream = createReadStream(path.join(assetImageStorageRoot, image.storageName));
   stream.on('error', (error) => { if (res.headersSent) return res.destroy(error); next(error); });
   stream.pipe(res);
+}
+
+export async function deleteAssetImage(identifier, imageId, actorId) {
+  const asset = await Asset.findOne({ ...findAssetQuery(identifier), isArchived: false }).select('_id assetId');
+  if (!asset) throw new AppError(404, 'ASSET_NOT_FOUND', 'Asset not found');
+  const image = await AssetImage.findOne({ _id: imageId, asset: asset._id });
+  if (!image) throw new AppError(404, 'ASSET_IMAGE_NOT_FOUND', 'Asset image not found');
+  await unlink(path.join(assetImageStorageRoot, image.storageName)).catch((error) => {
+    if (error.code !== 'ENOENT') throw error;
+  });
+  await image.deleteOne();
+  await createHistory(asset, actorId, 'IMAGE_DELETED', `Asset image deleted: ${image.originalName}`);
+  return { id: imageId };
 }
 
 export async function storeAssetImages(identifier, files, actorId, { transferFrom = '', transferTo = '', returnBy = '', uploadedVia = '', borrowing = null } = {}) {

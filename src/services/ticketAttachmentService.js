@@ -161,3 +161,22 @@ export async function streamTicketAttachment(identifier, attachmentId, user, res
   });
   stream.pipe(res);
 }
+
+export async function deleteTicketAttachment(identifier, attachmentId, user) {
+  if (user.role?.key !== 'SUPER_IT_ADMIN') throw new AppError(403, 'FORBIDDEN', 'Only Super IT Admin can permanently delete ticket attachments');
+  const ticket = await getAccessibleTicket(identifier, user);
+  const attachment = await TicketAttachment.findOne({ _id: attachmentId, ticket: ticket._id });
+  if (!attachment) throw new AppError(404, 'ATTACHMENT_NOT_FOUND', 'Attachment not found');
+  await unlink(path.join(storageRoot, attachment.storageName)).catch((error) => {
+    if (error.code !== 'ENOENT') throw error;
+  });
+  await attachment.deleteOne();
+  await TicketHistory.create({
+    ticket: ticket._id,
+    ticketNumber: ticket.ticketNumber,
+    actor: user._id,
+    action: 'ATTACHMENT_DELETED',
+    description: `Attachment permanently deleted: ${attachment.originalName}`
+  });
+  return { id: attachmentId };
+}

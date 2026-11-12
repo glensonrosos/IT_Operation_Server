@@ -108,7 +108,7 @@ export async function getLiveTicketBoard({ from, to } = {}) {
     Ticket.find(liveFilter).select('status resolutionDueAt responseDueAt resolvedAt closedAt firstResponseAt resolutionTargetHours responseTargetMinutes slaRiskThresholdPercent').lean(),
     Ticket.aggregate([{ $match: activeFilter }, { $group: { _id: '$priority', count: { $sum: 1 } } }]),
     Ticket.find(liveFilter).select('ticketNumber title status priority assignedTo askedForHelp updatedAt createdAt resolutionDueAt').populate('assignedTo', 'firstName lastName username').populate('askedForHelp', 'firstName lastName username').sort({ updatedAt: -1 }).limit(12).lean(),
-    Ticket.find({ isArchived: false, createdAt: { $gte: performanceFrom, $lte: performanceTo }, $or: [{ assignedTo: { $ne: null } }, { askedForHelp: { $exists: true, $ne: [] } }] }).select('assignedTo askedForHelp estimatedResolutionHours estimatedResolutionMinutes').lean()
+    Ticket.find({ isArchived: false, status: 'CLOSED', createdAt: { $gte: performanceFrom, $lte: performanceTo }, $or: [{ assignedTo: { $ne: null } }, { askedForHelp: { $exists: true, $ne: [] } }] }).select('assignedTo askedForHelp estimatedResolutionHours estimatedResolutionMinutes').lean()
   ]);
   const performanceMap = new Map();
   for (const ticket of performanceRows) {

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { downloadTicketAttachment, getLiveTicketBoardData, getTicketAssignees, getTicketAttachments, getTicketById, getTicketComments, getTicketHistory, getTicketMentionableUsers, getTickets, getTicketNotificationCount, getTicketSlaPolicies, getTicketTroubleshooting, patchTicket, patchTicketAskedForHelp, patchTicketAssignment, patchTicketStatus, postTicket, postTicketAttachment, postTicketComment, postTicketTroubleshooting } from '../controllers/ticketController.js';
+import { deleteTicketAttachmentById, downloadTicketAttachment, getLiveTicketBoardData, getTicketAssignees, getTicketAttachments, getTicketById, getTicketComments, getTicketHistory, getTicketMentionableUsers, getTickets, getTicketNotificationCount, getTicketSlaPolicies, getTicketTroubleshooting, patchTicket, patchTicketAskedForHelp, patchTicketAssignment, patchTicketStatus, postTicket, postTicketAttachment, postTicketComment, postTicketTroubleshooting } from '../controllers/ticketController.js';
 import { requireAnyPermission, requireAuth, requirePermission } from '../middleware/auth.js';
 import { requirePasswordChangeComplete } from '../middleware/passwordChange.js';
 import { uploadTicketAttachment } from '../middleware/ticketUpload.js';
@@ -27,5 +27,6 @@ router.post('/:id/troubleshooting', requirePermission('tickets.update'), postTic
 router.get('/:id/attachments', requireAnyPermission(['tickets.view', 'tickets.view.assigned']), getTicketAttachments);
 router.post('/:id/attachments', requirePermission('tickets.update'), uploadTicketAttachment, postTicketAttachment);
 router.get('/:id/attachments/:attachmentId/download', requireAnyPermission(['tickets.view', 'tickets.view.assigned']), downloadTicketAttachment);
+router.delete('/:id/attachments/:attachmentId', requirePermission('tickets.update'), deleteTicketAttachmentById);
 
 export default router;

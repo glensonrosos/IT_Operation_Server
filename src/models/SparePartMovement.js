@@ -11,6 +11,11 @@ const sparePartMovementSchema = new mongoose.Schema({
   reference: { type: String, trim: true, maxlength: 160, default: '' },
   relatedTicket: { type: mongoose.Schema.Types.ObjectId, ref: 'Ticket', default: null },
   actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  imageDeletionHistory: [{
+    originalName: { type: String, required: true },
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    deletedAt: { type: Date, default: Date.now }
+  }],
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: false });
 

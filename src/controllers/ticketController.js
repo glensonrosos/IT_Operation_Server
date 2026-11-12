@@ -2,7 +2,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { hasPermission } from '../middleware/auth.js';
 import { addComment, addTroubleshooting, assignTicket, countTicketNotifications, createTicket, getAssignableUsers, getLiveTicketBoard, getSlaPolicies, getTicket, listComments, listTicketHistory, listTickets, listTroubleshooting, transitionTicket, updateAskedForHelp, updateTicket } from '../services/ticketService.js';
 
-import { listTicketAttachments, storeTicketAttachment, streamTicketAttachment } from '../services/ticketAttachmentService.js';
+import { deleteTicketAttachment, listTicketAttachments, storeTicketAttachment, streamTicketAttachment } from '../services/ticketAttachmentService.js';
 import { askedForHelpSchema, assignTicketSchema, createCommentSchema, createTicketSchema, ticketQuerySchema, transitionTicketSchema, troubleshootingSchema, updateTicketSchema } from '../validators/ticketValidators.js';
 
 function parseOrFail(schema, value, next) {
@@ -219,6 +219,15 @@ export async function postTicketAttachment(req, res, next) {
 export async function downloadTicketAttachment(req, res, next) {
   try {
     await streamTicketAttachment(req.params.id, req.params.attachmentId, req.user, res, next);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteTicketAttachmentById(req, res, next) {
+  try {
+    await deleteTicketAttachment(req.params.id, req.params.attachmentId, req.user);
+    res.json({ success: true, message: 'Ticket attachment permanently deleted' });
   } catch (error) {
     next(error);
   }

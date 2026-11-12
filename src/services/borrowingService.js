@@ -1,19 +1,26 @@
 import { randomUUID } from 'node:crypto';
+import { unlink } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import mongoose from 'mongoose';
 import { AppError } from '../middleware/errorHandler.js';
 import { hasPermission } from '../middleware/auth.js';
 import Asset from '../models/Asset.js';
 import AssetHistory from '../models/AssetHistory.js';
+import AssetImage from '../models/AssetImage.js';
 import Borrowing from '../models/Borrowing.js';
 import Counter from '../models/Counter.js';
 import Department from '../models/Department.js';
 import Employee from '../models/Employee.js';
 import Ticket from '../models/Ticket.js';
 import { logger } from '../utils/logger.js';
+import { env } from '../config/env.js';
 
 function borrowingQuery(identifier) {
   return mongoose.isValidObjectId(identifier) ? { _id: identifier } : { borrowingNumber: identifier.toUpperCase() };
 }
+
+const assetImageStorageRoot = path.resolve(fileURLToPath(new URL('../../', import.meta.url)), env.UPLOAD_DIR, 'assets');
 
 async function nextBorrowingNumber() {
   const year = new Date().getUTCFullYear();
@@ -150,6 +157,19 @@ export async function listBorrowings(filters, user) {
 export async function getBorrowing(identifier, user) {
   const borrowing = await getBorrowingDocument(identifier, user);
   return serializeBorrowing(borrowing);
+}
+
+export async function deleteBorrowingImage(identifier, imageId, actorId, user) {
+  if (user.role?.key !== 'SUPER_IT_ADMIN') throw new AppError(403, 'FORBIDDEN', 'Only Super IT Admin can permanently delete borrowing images');
+  const borrowing = await Borrowing.findOne(borrowingQuery(identifier)).select('_id borrowingNumber items events');
+  if (!borrowing) throw new AppError(404, 'BORROWING_NOT_FOUND', 'Borrowing record not found');
+  const image = await AssetImage.findOne({ _id: imageId, borrowing: borrowing._id });
+  if (!image) throw new AppError(404, 'BORROWING_IMAGE_NOT_FOUND', 'Borrowing image not found');
+  await unlink(path.join(assetImageStorageRoot, image.storageName)).catch((error) => { if (error.code !== 'ENOENT') throw error; });
+  await image.deleteOne();
+  borrowing.events.push(event(actorId, 'BORROWING_IMAGE_DELETED', `Borrowing image permanently deleted: ${image.originalName}`, { imageId }));
+  await borrowing.save();
+  return { id: imageId };
 }
 
 export async function decideBorrowing(identifier, { decision, note = '', rejectionReason = '' }, actorId) {

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile, createReadStream } from 'node:fs';
+import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AppError } from '../middleware/errorHandler.js';
@@ -27,3 +28,12 @@ const movementImageRoot = path.resolve(env.UPLOAD_DIR, 'spare-part-movement-imag
 export async function storeSparePartMovementImages(identifier, files, actorId) { const movement = await SparePartMovement.findById(identifier); if (!movement) throw new AppError(404, 'MOVEMENT_NOT_FOUND', 'Stock movement not found'); if (!files?.length) throw new AppError(400, 'FILE_REQUIRED', 'Select at least one image'); await new Promise((resolve, reject) => mkdir(movementImageRoot, { recursive: true }, (error) => error ? reject(error) : resolve())); const results = []; for (const file of files) { const extension = file.mimetype === 'image/png' ? '.png' : '.jpg'; const storageName = `${randomUUID()}${extension}`; await new Promise((resolve, reject) => writeFile(path.join(movementImageRoot, storageName), file.buffer, { flag: 'wx', mode: 0o640 }, (error) => error ? reject(error) : resolve())); const image = await SparePartMovementImage.create({ movement: movement._id, originalName: path.basename(file.originalname).slice(0, 255), storageName, mimeType: file.mimetype, size: file.size, uploadedBy: actorId }); results.push(image.toObject()); } return results; }
 export async function listSparePartMovementImages(identifier) { return SparePartMovementImage.find({ movement: identifier }).select('originalName mimeType size createdAt').sort({ createdAt: -1 }).lean(); }
 export async function streamSparePartMovementImage(identifier, imageId, res, next) { const image = await SparePartMovementImage.findOne({ _id: imageId, movement: identifier }).lean(); if (!image) throw new AppError(404, 'IMAGE_NOT_FOUND', 'Movement image not found'); res.set({ 'Content-Type': image.mimeType, 'Content-Length': image.size, 'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(image.originalName)}`, 'Cache-Control': 'private, no-store' }); const stream = createReadStream(path.join(movementImageRoot, image.storageName)); stream.on('error', next); stream.pipe(res); }
+export async function deleteSparePartMovementImage(movementId, imageId, user) {
+  if (user.role?.key !== 'SUPER_IT_ADMIN') throw new AppError(403, 'FORBIDDEN', 'Only Super IT Admin can permanently delete movement images');
+  const image = await SparePartMovementImage.findOne({ _id: imageId, movement: movementId });
+  if (!image) throw new AppError(404, 'IMAGE_NOT_FOUND', 'Movement image not found');
+  await unlink(path.join(movementImageRoot, image.storageName)).catch((error) => { if (error.code !== 'ENOENT') throw error; });
+  await SparePartMovementImage.deleteOne({ _id: image._id });
+  await SparePartMovement.updateOne({ _id: movementId }, { $push: { imageDeletionHistory: { originalName: image.originalName, deletedBy: user._id, deletedAt: new Date() } } });
+  return { id: imageId };
+}

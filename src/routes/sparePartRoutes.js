@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { uploadAssetImages } from '../middleware/assetImageUpload.js';
-import { getSparePartById, getSparePartHistory, getSpareParts, patchSparePart, postSparePart, postSparePartMovement, postSparePartMovementImages, getSparePartMovementImages, getSparePartMovementImage } from '../controllers/sparePartController.js';
+import { deleteSparePartMovementImageById, getSparePartById, getSparePartHistory, getSpareParts, patchSparePart, postSparePart, postSparePartMovement, postSparePartMovementImages, getSparePartMovementImages, getSparePartMovementImage } from '../controllers/sparePartController.js';
 import { requireAuth, requirePermission } from '../middleware/auth.js';
 import { requirePasswordChangeComplete } from '../middleware/passwordChange.js';
 const router = Router(); router.use(requireAuth, requirePasswordChangeComplete);
@@ -9,6 +9,7 @@ router.post('/', requirePermission('spareParts.manage'), postSparePart);
 router.get('/:id', requirePermission('spareParts.view'), getSparePartById);
 router.patch('/:id', requirePermission('spareParts.manage'), patchSparePart);
 router.get('/movements/:movementId/images/:imageId', requirePermission('spareParts.view'), getSparePartMovementImage);
+router.delete('/movements/:movementId/images/:imageId', requirePermission('spareParts.stock'), deleteSparePartMovementImageById);
 router.get('/movements/:movementId/images', requirePermission('spareParts.view'), getSparePartMovementImages);
 router.post('/movements/:movementId/images', requirePermission('spareParts.stock'), uploadAssetImages, postSparePartMovementImages);
 router.get('/:id/history', requirePermission('spareParts.view'), getSparePartHistory);

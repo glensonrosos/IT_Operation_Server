@@ -1,5 +1,5 @@
 import { AppError } from '../middleware/errorHandler.js';
-import { cancelBorrowing, checkinBorrowing, checkoutBorrowing, createBorrowing, decideBorrowing, getBorrowing, listBorrowings, markBorrowingReady } from '../services/borrowingService.js';
+import { cancelBorrowing, checkinBorrowing, checkoutBorrowing, createBorrowing, decideBorrowing, deleteBorrowingImage, getBorrowing, listBorrowings, markBorrowingReady } from '../services/borrowingService.js';
 import { borrowingCheckinSchema, borrowingCheckoutSchema, borrowingDecisionSchema, borrowingQuerySchema, borrowingReadySchema, createBorrowingSchema } from '../validators/borrowingValidators.js';
 
 function parseOrFail(schema, value, next) {
@@ -26,6 +26,15 @@ export async function getBorrowingById(req, res, next) {
   try {
     const borrowing = await getBorrowing(req.params.id, req.user);
     res.json({ success: true, data: { borrowing } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteBorrowingImageById(req, res, next) {
+  try {
+    await deleteBorrowingImage(req.params.id, req.params.imageId, req.user._id, req.user);
+    res.json({ success: true, message: 'Borrowing image permanently deleted' });
   } catch (error) {
     next(error);
   }
