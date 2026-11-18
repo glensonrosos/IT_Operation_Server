@@ -1,5 +1,5 @@
 import { AppError } from '../middleware/errorHandler.js';
-import { archiveAsset, assignAsset, createAsset, deleteAsset, deleteAssetImage, getAsset, getCurrentAssignment, listAssetAssignments, listAssetHistory, listAssetImages, listAssetSpareParts, listAssets, listEmployeeAssetAssignments, storeAssetImages, streamAssetImage, updateAsset } from '../services/assetService.js';
+import { archiveAsset, assignAsset, createAsset, deleteAsset, deleteAssetImage, getAsset, getCurrentAssignment, listAssetAssignments, listAssetHistory, listAssetImages, listAssetSpareParts, listAssets, listEmployeeAssetAssignments, setPrimaryAssetImage, storeAssetImages, streamAssetImage, updateAsset } from '../services/assetService.js';
 import { assetQuerySchema, assignAssetSchema, createAssetSchema, updateAssetSchema } from '../validators/assetValidators.js';
 
 function parseOrFail(schema, value, next) {
@@ -71,6 +71,15 @@ export async function deleteAssetImageById(req, res, next) {
   try {
     await deleteAssetImage(req.params.id, req.params.imageId, req.user._id);
     res.json({ success: true, message: 'Asset image permanently deleted' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function setPrimaryAssetImageById(req, res, next) {
+  try {
+    const image = await setPrimaryAssetImage(req.params.id, req.params.imageId, req.user._id);
+    res.json({ success: true, message: 'Primary asset image selected', data: { image } });
   } catch (error) {
     next(error);
   }

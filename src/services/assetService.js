@@ -17,7 +17,7 @@ import Employee from '../models/Employee.js';
 import SparePartMovement from '../models/SparePartMovement.js';
 import { logger } from '../utils/logger.js';
 
-const assetFields = 'assetId assetType assetTypeCode assetName quantity brand model serialNumber serviceTag propertyNumber purchaseDate purchaseCost vendor invoiceNumber warrantyStart warrantyEnd department location currentCustodian currentBorrower currentMaintenance lastMaintenance nextMaintenanceAt isBorrowable pendingTransfer pendingReturn status condition description notes isArchived archivedAt createdAt updatedAt';
+const assetFields = 'assetId assetType assetTypeCode assetName quantity brand model serialNumber serviceTag propertyNumber purchaseDate purchaseCost vendor invoiceNumber warrantyStart warrantyEnd department location currentCustodian currentBorrower currentMaintenance lastMaintenance nextMaintenanceAt isBorrowable pendingTransfer pendingReturn primaryImage status condition description notes isArchived archivedAt createdAt updatedAt';
 const assetImageStorageRoot = path.resolve(fileURLToPath(new URL('../../', import.meta.url)), env.UPLOAD_DIR, 'assets');
 export const assetTransitions = {
   PURCHASED: ['RECEIVED', 'IN_STOCK', 'AVAILABLE', 'UNDER_REPAIR', 'DAMAGED', 'RETIRED'],
@@ -358,9 +358,21 @@ export async function listEmployeeAssetAssignments(employeeId) {
 export async function listAssetSpareParts(identifier) { const asset = await Asset.findOne({ ...findAssetQuery(identifier), isArchived: false }).select('assetId'); if (!asset) throw new AppError(404, 'ASSET_NOT_FOUND', 'Asset not found'); return SparePartMovement.find({ type: 'ISSUED', reference: { $in: [asset.assetId, asset._id.toString()] } }).populate('sparePart', 'partNumber partName model partType description condition').populate('actor', 'firstName lastName username').sort({ createdAt: -1 }).lean(); }
 
 export async function listAssetImages(identifier, borrowingId) {
-  const asset = await Asset.findOne({ ...findAssetQuery(identifier), isArchived: false }).select('_id');
+  const asset = await Asset.findOne({ ...findAssetQuery(identifier), isArchived: false }).select('_id primaryImage');
   if (!asset) throw new AppError(404, 'ASSET_NOT_FOUND', 'Asset not found');
-  return AssetImage.find({ asset: asset._id, ...(borrowingId ? { borrowing: borrowingId } : {}) }).select('originalName mimeType size uploadedBy createdAt transferFrom transferTo returnBy uploadedVia borrowing').populate('uploadedBy', 'firstName lastName username').sort({ createdAt: -1 }).lean();
+  return AssetImage.find({ asset: asset._id, ...(borrowingId ? { borrowing: borrowingId } : {}) }).select('originalName mimeType size uploadedBy createdAt transferFrom transferTo returnBy uploadedVia borrowing').populate('uploadedBy', 'firstName lastName username').sort({ createdAt: -1 }).lean().then((images) => images.map((image) => ({ ...image, isPrimary: String(asset.primaryImage ?? '') === String(image._id) })));
+}
+
+export async function setPrimaryAssetImage(identifier, imageId, actorId) {
+  const asset = await Asset.findOne({ ...findAssetQuery(identifier), isArchived: false });
+  if (!asset) throw new AppError(404, 'ASSET_NOT_FOUND', 'Asset not found');
+  const image = await AssetImage.findOne({ _id: imageId, asset: asset._id }).select('_id originalName');
+  if (!image) throw new AppError(404, 'ASSET_IMAGE_NOT_FOUND', 'Asset image not found');
+  asset.primaryImage = image._id;
+  asset.updatedBy = actorId;
+  await asset.save();
+  await createHistory(asset, actorId, 'UPDATED', `Primary asset image selected: ${image.originalName}`);
+  return { id: image.id };
 }
 
 export async function streamAssetImage(identifier, imageId, res, next) {
@@ -375,7 +387,7 @@ export async function streamAssetImage(identifier, imageId, res, next) {
 }
 
 export async function deleteAssetImage(identifier, imageId, actorId) {
-  const asset = await Asset.findOne({ ...findAssetQuery(identifier), isArchived: false }).select('_id assetId');
+  const asset = await Asset.findOne({ ...findAssetQuery(identifier), isArchived: false }).select('_id assetId primaryImage');
   if (!asset) throw new AppError(404, 'ASSET_NOT_FOUND', 'Asset not found');
   const image = await AssetImage.findOne({ _id: imageId, asset: asset._id });
   if (!image) throw new AppError(404, 'ASSET_IMAGE_NOT_FOUND', 'Asset image not found');
@@ -383,6 +395,9 @@ export async function deleteAssetImage(identifier, imageId, actorId) {
     if (error.code !== 'ENOENT') throw error;
   });
   await image.deleteOne();
+  if (String(asset.primaryImage ?? '') === String(image._id)) {
+    await Asset.updateOne({ _id: asset._id }, { $set: { primaryImage: null } });
+  }
   await createHistory(asset, actorId, 'IMAGE_DELETED', `Asset image deleted: ${image.originalName}`);
   return { id: imageId };
 }

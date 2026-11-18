@@ -37,6 +37,7 @@ const assetSchema = new mongoose.Schema({
   condition: { type: String, enum: ['NEW', 'EXCELLENT', 'GOOD', 'FAIR', 'DAMAGED', 'UNUSABLE'], default: 'GOOD', index: true },
   description: { type: String, trim: true, maxlength: 4000, default: '' },
   notes: { type: String, trim: true, maxlength: 4000, default: '' },
+  primaryImage: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetImage', default: null },
   isArchived: { type: Boolean, default: false, index: true },
   archivedAt: { type: Date, default: null },
   archivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
