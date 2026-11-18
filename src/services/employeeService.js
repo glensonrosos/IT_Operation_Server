@@ -169,3 +169,16 @@ export async function archiveEmployee(identifier, actorId, restore = false) {
   logger.info({ action: restore ? 'RESTORE' : 'ARCHIVE', module: 'employees', recordId: employee.id, userId: actorId }, 'Employee archive state changed');
   return getEmployee(employee.id, true);
 }
+
+export async function deleteEmployee(identifier) {
+  const employee = await Employee.findOne(findEmployeeQuery(identifier));
+  if (!employee) throw new AppError(404, 'EMPLOYEE_NOT_FOUND', 'Employee not found');
+  if (employee.status === 'ACTIVE') throw new AppError(409, 'ACTIVE_EMPLOYEE', 'Only inactive employees can be permanently deleted');
+  if (employee.photo?.storageName) {
+    await unlink(path.join(employeePhotoRoot, employee.photo.storageName)).catch((error) => {
+      if (error.code !== 'ENOENT') throw error;
+    });
+  }
+  await Employee.deleteOne({ _id: employee._id });
+  return { id: employee._id.toString(), employeeId: employee.employeeId };
+}

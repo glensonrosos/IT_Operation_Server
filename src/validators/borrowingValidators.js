@@ -49,7 +49,8 @@ export const borrowingCheckinSchema = z.object({
   .refine((value) => value.items.every((item) => item.result === 'LOST' || Boolean(item.conditionAfter)), 'Select the returned condition for each physically returned asset')
   .refine((value) => value.items.every((item) => !['RETURNED_DAMAGED', 'RETURNED_FOR_REPAIR'].includes(item.result) || Boolean(item.damageDescription?.trim())), 'Describe damage or repair requirements')
   .refine((value) => value.items.every((item) => item.result !== 'RETURNED_INCOMPLETE' || item.missingAccessories.length > 0), 'List missing accessories for incomplete returns')
-  .refine((value) => value.items.every((item) => item.result !== 'LOST' || Boolean(item.damageDescription?.trim())), 'Describe the loss circumstances');
+  .refine((value) => value.items.every((item) => item.result !== 'LOST' || Boolean(item.damageDescription?.trim())), 'Describe the loss circumstances')
+  .refine((value) => value.items.every((item) => !['RETURNED_DAMAGED', 'RETURNED_INCOMPLETE', 'LOST'].includes(item.result) || Boolean(item.relatedTicket)), 'A related ticket is required for damaged, incomplete, or lost returns');
 
 export const borrowingQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(1_000_000).default(1),

@@ -72,6 +72,9 @@ async function getEligibleEmployee(employeeId) {
   if (!employee || !employee.department || employee.department.status !== 'ACTIVE' || employee.department.isArchived) {
     throw new AppError(422, 'INVALID_EMPLOYEE', 'The employee must be active and belong to an active department');
   }
+  if ([employee.department.departmentCode, employee.department.departmentName].some((value) => String(value ?? '').trim().toUpperCase() === 'IT')) {
+    throw new AppError(422, 'IT_EMPLOYEE_TRANSFER_NOT_ALLOWED', 'Assets cannot be transferred to employees in the IT department');
+  }
   return employee;
 }
 

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { deleteAssetImageById, getAssetAssignments, getAssetById, getAssetCurrentAssignment, getAssetHistory, getAssetImage, getAssetImages, getAssetSpareParts, getAssets, getEmployeeAssetAssignments, patchAsset, postAsset, postAssetArchive, postAssetAssignment, postAssetImages, postAssetRestore } from '../controllers/assetController.js';
+import { deleteAssetById, deleteAssetImageById, getAssetAssignments, getAssetById, getAssetCurrentAssignment, getAssetHistory, getAssetImage, getAssetImages, getAssetSpareParts, getAssets, getEmployeeAssetAssignments, patchAsset, postAsset, postAssetArchive, postAssetAssignment, postAssetImages, postAssetRestore } from '../controllers/assetController.js';
 import { requireAnyPermission, requireAuth, requirePermission } from '../middleware/auth.js';
 import { uploadAssetImages } from '../middleware/assetImageUpload.js';
 import { requirePasswordChangeComplete } from '../middleware/passwordChange.js';
@@ -14,6 +14,7 @@ router.get('/:id/spare-parts', requirePermission('assets.view'), getAssetSparePa
 router.get('/:id/images', requirePermission('assets.view'), getAssetImages);
 router.get('/:id/images/:imageId', requirePermission('assets.view'), getAssetImage);
 router.delete('/:id/images/:imageId', requirePermission('assets.update'), deleteAssetImageById);
+router.delete('/:id', requirePermission('assets.update'), deleteAssetById);
 router.post('/:id/images', requireAnyPermission(['assets.create', 'assets.update', 'assets.transfer', 'assets.return']), uploadAssetImages, postAssetImages);
 router.post('/:id/transfers', requirePermission('assets.transfer'), postAssetTransferRequest);
 router.post('/:id/returns/resume', requirePermission('assets.return'), postAssetReturnResume);

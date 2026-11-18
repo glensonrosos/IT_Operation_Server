@@ -53,8 +53,8 @@ export async function createMaintenance(input, actorId) {
   if (['CORRECTIVE', 'REPAIR'].includes(input.type) && !canTransitionAsset(asset.status, 'UNDER_REPAIR')) {
     throw new AppError(409, 'INVALID_ASSET_TRANSITION', `Asset cannot move from ${asset.status} to UNDER_REPAIR`);
   }
-  if (input.relatedTicket && !await Ticket.exists({ _id: input.relatedTicket, assetReferences: asset._id })) {
-    throw new AppError(422, 'INVALID_TICKET', 'Related ticket must reference this asset');
+  if (input.relatedTicket && !await Ticket.exists({ _id: input.relatedTicket, assetReferences: asset._id, status: { $ne: 'CLOSED' } })) {
+    throw new AppError(422, 'INVALID_TICKET', 'Related ticket must reference this asset and must not be closed');
   }
   if (input.assignedTechnician && !await User.exists({ _id: input.assignedTechnician, status: 'ACTIVE' })) {
     throw new AppError(422, 'INVALID_TECHNICIAN', 'Assigned technician must be an active IT user');
@@ -101,7 +101,7 @@ export async function createMaintenance(input, actorId) {
 export async function listMaintenance(filters) {
   const query = {};
   if (filters.asset) query.asset = filters.asset;
-  if (filters.status) query.status = filters.status;
+  if (filters.status) query.status = Array.isArray(filters.status) ? { $in: filters.status } : filters.status;
   if (filters.type) query.type = filters.type;
   if (filters.warrantyClaim) query.warrantyClaim = filters.warrantyClaim === 'true';
   if (filters.dueSoon === 'true') query.nextMaintenanceAt = { $gte: new Date(), $lte: new Date(Date.now() + 30 * 86_400_000) };

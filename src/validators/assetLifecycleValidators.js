@@ -38,6 +38,7 @@ export const assetReturnSchema = z.object({
   .refine((value) => !['RETURNED_DAMAGED', 'RETURNED_FOR_REPAIR'].includes(value.result) || ['DAMAGED', 'UNUSABLE'].includes(value.conditionAfter), 'A damaged or repair return must record a damaged or unusable condition')
   .refine((value) => value.result !== 'RETURNED_GOOD' || !['DAMAGED', 'UNUSABLE'].includes(value.conditionAfter), 'A damaged or unusable asset cannot be returned as good')
   .refine((value) => value.result !== 'RETURNED_INCOMPLETE' || value.missingAccessories.length > 0, 'List missing accessories for an incomplete return')
+  .refine((value) => !['RETURNED_DAMAGED', 'RETURNED_INCOMPLETE', 'RETURNED_FOR_REPAIR'].includes(value.result) || Boolean(value.relatedTicket), 'A related ticket is required for damaged, incomplete, or repair returns')
   .refine((value) => !value.returnDate || new Date(value.returnDate) <= new Date(), 'Return date cannot be in the future');
 
 export const assetTransferQuerySchema = z.object({

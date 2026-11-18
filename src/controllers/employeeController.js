@@ -1,5 +1,5 @@
 import { AppError } from '../middleware/errorHandler.js';
-import { archiveEmployee, createEmployee, getEmployee, listEmployees, storeEmployeePhoto, streamEmployeePhoto, updateEmployee } from '../services/employeeService.js';
+import { archiveEmployee, createEmployee, deleteEmployee, getEmployee, listEmployees, storeEmployeePhoto, streamEmployeePhoto, updateEmployee } from '../services/employeeService.js';
 import { createEmployeeSchema, employeeQuerySchema, updateEmployeeSchema } from '../validators/employeeValidators.js';
 
 function parseOrFail(schema, value, next) {
@@ -92,4 +92,14 @@ export function archiveEmployeeRecord(req, res, next) {
 
 export function restoreEmployeeRecord(req, res, next) {
   return changeArchiveState(req, res, next, true);
+}
+
+export async function deleteEmployeeRecord(req, res, next) {
+  if (req.user.role?.key !== 'SUPER_IT_ADMIN') return next(new AppError(403, 'FORBIDDEN', 'Only Super IT Admin can permanently delete employees'));
+  try {
+    const employee = await deleteEmployee(req.params.id);
+    res.json({ success: true, message: 'Employee permanently deleted', data: { employee } });
+  } catch (error) {
+    next(error);
+  }
 }

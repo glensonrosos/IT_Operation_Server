@@ -17,7 +17,7 @@ export const createMaintenanceSchema = z.object({
   warrantyReference: optionalText(160),
   scheduledAt: optionalDateTime,
   assignedTechnician: objectId.optional(),
-  relatedTicket: objectId.optional()
+  relatedTicket: objectId
 }).strict();
 
 export const completeMaintenanceSchema = z.object({
@@ -39,7 +39,10 @@ export const maintenanceQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(1_000_000).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   asset: objectId.optional(),
-  status: z.enum(['IN_PROGRESS', 'ON_HOLD', 'COMPLETING', 'COMPLETED', 'CANCELLED']).optional(),
+  status: z.preprocess((value) => typeof value === 'string' && value.includes(',') ? value.split(',').filter(Boolean) : value, z.union([
+    z.enum(['IN_PROGRESS', 'ON_HOLD', 'COMPLETING', 'COMPLETED', 'CANCELLED']),
+    z.array(z.enum(['IN_PROGRESS', 'ON_HOLD', 'COMPLETING', 'COMPLETED', 'CANCELLED'])).min(1)
+  ]).optional()),
   type: z.enum(['PREVENTIVE', 'CORRECTIVE', 'INSPECTION', 'REPAIR', 'UPGRADE']).optional(),
   warrantyClaim: z.enum(['true', 'false']).optional(),
   dueSoon: z.enum(['true', 'false']).optional()

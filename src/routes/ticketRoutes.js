@@ -1,11 +1,19 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { deleteTicketAttachmentById, downloadTicketAttachment, getLiveTicketBoardData, getTicketAssignees, getTicketAttachments, getTicketById, getTicketComments, getTicketHistory, getTicketMentionableUsers, getTickets, getTicketNotificationCount, getTicketSlaPolicies, getTicketTroubleshooting, patchTicket, patchTicketAskedForHelp, patchTicketAssignment, patchTicketStatus, postTicket, postTicketAttachment, postTicketComment, postTicketTroubleshooting } from '../controllers/ticketController.js';
 import { requireAnyPermission, requireAuth, requirePermission } from '../middleware/auth.js';
 import { requirePasswordChangeComplete } from '../middleware/passwordChange.js';
 import { uploadTicketAttachment } from '../middleware/ticketUpload.js';
 
 const router = Router();
-router.get('/public-live-board', getLiveTicketBoardData);
+const publicBoardRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: 'The live ticket board is being refreshed too frequently. Please try again later.'
+});
+router.get('/public-live-board', publicBoardRateLimit, getLiveTicketBoardData);
 router.use(requireAuth, requirePasswordChangeComplete);
 router.get('/assignable-users', requirePermission('tickets.assign'), getTicketAssignees);
 router.get('/mentionable-users', requirePermission('tickets.update'), getTicketMentionableUsers);

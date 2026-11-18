@@ -1,5 +1,5 @@
 import { AppError } from '../middleware/errorHandler.js';
-import { archiveAsset, assignAsset, createAsset, deleteAssetImage, getAsset, getCurrentAssignment, listAssetAssignments, listAssetHistory, listAssetImages, listAssetSpareParts, listAssets, listEmployeeAssetAssignments, storeAssetImages, streamAssetImage, updateAsset } from '../services/assetService.js';
+import { archiveAsset, assignAsset, createAsset, deleteAsset, deleteAssetImage, getAsset, getCurrentAssignment, listAssetAssignments, listAssetHistory, listAssetImages, listAssetSpareParts, listAssets, listEmployeeAssetAssignments, storeAssetImages, streamAssetImage, updateAsset } from '../services/assetService.js';
 import { assetQuerySchema, assignAssetSchema, createAssetSchema, updateAssetSchema } from '../validators/assetValidators.js';
 
 function parseOrFail(schema, value, next) {
@@ -71,6 +71,16 @@ export async function deleteAssetImageById(req, res, next) {
   try {
     await deleteAssetImage(req.params.id, req.params.imageId, req.user._id);
     res.json({ success: true, message: 'Asset image permanently deleted' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteAssetById(req, res, next) {
+  if (req.user.role?.key !== 'SUPER_IT_ADMIN') return next(new AppError(403, 'FORBIDDEN', 'Only Super IT Admin can permanently delete assets'));
+  try {
+    const asset = await deleteAsset(req.params.id);
+    res.json({ success: true, message: 'Asset permanently deleted', data: { asset } });
   } catch (error) {
     next(error);
   }

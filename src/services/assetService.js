@@ -285,6 +285,9 @@ export async function assignAsset(identifier, input, actorId) {
   if (!employee || !employee.department || employee.department.status !== 'ACTIVE' || employee.department.isArchived) {
     throw new AppError(422, 'INVALID_EMPLOYEE', 'Assets can only be assigned to an active employee in an active department');
   }
+  if ([employee.department.departmentCode, employee.department.departmentName].some((value) => String(value ?? '').trim().toUpperCase() === 'IT')) {
+    throw new AppError(422, 'IT_EMPLOYEE_ASSIGNMENT_NOT_ALLOWED', 'Assets cannot be assigned to employees in the IT department');
+  }
   const asset = await Asset.findOne({ ...findAssetQuery(identifier), isArchived: false });
   if (!asset) throw new AppError(404, 'ASSET_NOT_FOUND', 'Asset not found');
   if (asset.currentCustodian || asset.currentBorrower || asset.currentBorrowing || asset.currentMaintenance || asset.pendingTransfer || asset.pendingReturn || !['AVAILABLE', 'IN_STOCK'].includes(asset.status)) {
@@ -352,7 +355,7 @@ export async function listEmployeeAssetAssignments(employeeId) {
   return AssetAssignment.find({ employee: employeeId }).populate('asset', 'assetId assetName status condition').populate('department', 'departmentCode departmentName').populate('assignedBy', 'firstName lastName username').sort({ assignedAt: -1 }).limit(100).lean();
 }
 
-export async function listAssetSpareParts(identifier) { const asset = await Asset.findOne({ ...findAssetQuery(identifier), isArchived: false }).select('assetId'); if (!asset) throw new AppError(404, 'ASSET_NOT_FOUND', 'Asset not found'); return SparePartMovement.find({ type: 'ISSUED', reference: { $in: [asset.assetId, asset._id.toString()] } }).populate('sparePart', 'partNumber partName model partType condition').populate('actor', 'firstName lastName username').sort({ createdAt: -1 }).lean(); }
+export async function listAssetSpareParts(identifier) { const asset = await Asset.findOne({ ...findAssetQuery(identifier), isArchived: false }).select('assetId'); if (!asset) throw new AppError(404, 'ASSET_NOT_FOUND', 'Asset not found'); return SparePartMovement.find({ type: 'ISSUED', reference: { $in: [asset.assetId, asset._id.toString()] } }).populate('sparePart', 'partNumber partName model partType description condition').populate('actor', 'firstName lastName username').sort({ createdAt: -1 }).lean(); }
 
 export async function listAssetImages(identifier, borrowingId) {
   const asset = await Asset.findOne({ ...findAssetQuery(identifier), isArchived: false }).select('_id');
@@ -421,4 +424,21 @@ export async function archiveAsset(identifier, actorId, restore = false) {
   await asset.save();
   await createHistory(asset, actorId, restore ? 'RESTORED' : 'ARCHIVED', `Asset ${restore ? 'restored' : 'archived'}`);
   return getAsset(asset.id, true);
+}
+
+export async function deleteAsset(identifier) {
+  const asset = await Asset.findOne(findAssetQuery(identifier));
+  if (!asset) throw new AppError(404, 'ASSET_NOT_FOUND', 'Asset not found');
+  if (asset.currentCustodian) throw new AppError(409, 'ASSET_HAS_CUSTODIAN', 'Remove the current custodian before deleting this asset');
+  if (asset.currentBorrower || asset.currentBorrowing || asset.currentMaintenance || asset.pendingTransfer || asset.pendingReturn) {
+    throw new AppError(409, 'ASSET_IN_USE', 'Complete or cancel the active asset process before deleting this asset');
+  }
+
+  const images = await AssetImage.find({ asset: asset._id }).select('storageName').lean();
+  await Promise.all(images.map((image) => unlink(path.join(assetImageStorageRoot, image.storageName)).catch((error) => {
+    if (error.code !== 'ENOENT') throw error;
+  })));
+  await AssetImage.deleteMany({ asset: asset._id });
+  await Asset.deleteOne({ _id: asset._id });
+  return { id: asset._id.toString(), assetId: asset.assetId };
 }
