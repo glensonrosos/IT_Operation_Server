@@ -308,6 +308,12 @@ export async function updateTicket(identifier, updates, actor) {
   assertCanModifyTicket(ticket, actor);
   if (['CLOSED', 'CANCELLED', 'DUPLICATED'].includes(ticket.status)) throw new AppError(409, 'TICKET_FINAL', 'Closed or cancelled tickets cannot be edited');
   const changes = {};
+  if (updates.requester !== undefined && !ticket.requester.equals(updates.requester)) {
+    const requester = await Employee.findOne({ _id: updates.requester, status: 'ACTIVE', isArchived: false });
+    if (!requester) throw new AppError(422, 'INVALID_REQUESTER', 'Select an active employee');
+    changes.requester = { before: ticket.requester.toString(), after: requester._id.toString() };
+    ticket.requester = requester._id;
+  }
   for (const field of ['title', 'description', 'type']) {
     if (updates[field] !== undefined && JSON.stringify(ticket[field]) !== JSON.stringify(updates[field])) {
       changes[field] = { before: ticket[field], after: updates[field] };

@@ -23,6 +23,7 @@ export const createTicketSchema = z.object({
 }).strict();
 
 export const updateTicketSchema = z.object({
+  requester: objectId,
   title: z.string().trim().min(3).max(200),
   description: z.string().trim().min(1).max(10000),
   type: z.enum(ticketTypes),
