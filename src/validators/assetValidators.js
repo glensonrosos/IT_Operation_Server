@@ -29,7 +29,7 @@ const assetBaseSchema = z.object({
   notes: optionalText(4000)
 }).strict();
 
-export const createAssetSchema = assetBaseSchema.extend({ assignTo: objectId.optional() }).refine(
+export const createAssetSchema = assetBaseSchema.refine(
   (value) => !value.warrantyStart || !value.warrantyEnd || value.warrantyStart <= value.warrantyEnd,
   'Warranty start must be before warranty end'
 );
