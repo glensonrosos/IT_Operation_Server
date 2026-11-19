@@ -146,6 +146,16 @@ export async function createAsset(input, actorId) {
   if (input.status === 'DAMAGED' && !['DAMAGED', 'UNUSABLE'].includes(input.condition)) {
     throw new AppError(422, 'CONDITION_STATUS_MISMATCH', 'A damaged asset must have a damaged or unusable condition');
   }
+  if (input.assignTo) {
+    const duplicate = await Asset.findOne({
+      assetName: { $regex: `^${escapedRegex(input.assetName)}$`, $options: 'i' },
+      currentCustodian: input.assignTo,
+      isArchived: false
+    }).select('assetId');
+    if (duplicate) {
+      throw new AppError(409, 'DUPLICATE_ASSIGNED_ASSET', `An asset named "${input.assetName}" is already assigned to this employee`);
+    }
+  }
 
   const counter = await Counter.findOneAndUpdate(
     { key: `asset:${assetType.code}` },

@@ -309,10 +309,18 @@ export async function updateTicket(identifier, updates, actor) {
   if (['CLOSED', 'CANCELLED', 'DUPLICATED'].includes(ticket.status)) throw new AppError(409, 'TICKET_FINAL', 'Closed or cancelled tickets cannot be edited');
   const changes = {};
   if (updates.requester !== undefined && !ticket.requester.equals(updates.requester)) {
-    const requester = await Employee.findOne({ _id: updates.requester, status: 'ACTIVE', isArchived: false });
-    if (!requester) throw new AppError(422, 'INVALID_REQUESTER', 'Select an active employee');
+    const requester = await Employee.findOne({ _id: updates.requester, status: 'ACTIVE', isArchived: false }).populate('department');
+    if (!requester || !requester.department || requester.department.status !== 'ACTIVE' || requester.department.isArchived) {
+      throw new AppError(422, 'INVALID_REQUESTER', 'Select an active employee with an active department');
+    }
     changes.requester = { before: ticket.requester.toString(), after: requester._id.toString() };
     ticket.requester = requester._id;
+    ticket.department = requester.department._id;
+    ticket.requesterSnapshot = {
+      employeeId: requester.employeeId,
+      fullName: requester.fullName,
+      departmentName: requester.department.departmentName
+    };
   }
   for (const field of ['title', 'description', 'type']) {
     if (updates[field] !== undefined && JSON.stringify(ticket[field]) !== JSON.stringify(updates[field])) {
